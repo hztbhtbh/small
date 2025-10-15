@@ -1,0 +1,64 @@
+name: Sync luci-app-openclash and luci-app-passwall
+
+on:
+  schedule:
+    - cron: "0 0 * * *"   # 每天 0 点运行
+  workflow_dispatch:       # 允许手动触发
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout your repo
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      # 同步 luci-app-openclash
+      - name: Initialize sparse-checkout for luci-app-openclash
+        run: |
+          rm -rf upstream-openclash
+          git clone --depth=1 --filter=blob:none --sparse https://github.com/vernesong/OpenClash.git upstream-openclash
+          cd upstream-openclash
+          git sparse-checkout set luci-app-openclash  # 只同步 luci-app-openclash
+
+      # 同步 luci-app-passwall
+      - name: Initialize sparse-checkout for luci-app-passwall
+        run: |
+          rm -rf upstream-passwall
+          git clone --depth=1 --filter=blob:none --sparse https://github.com/xiaorouji/openwrt-passwall.git upstream-passwall
+          cd upstream-passwall
+          git sparse-checkout init --cone
+          # 显式指定要下载的目录
+          git sparse-checkout set luci-app-passwall  # 只同步 luci-app-passwall
+
+      - name: Copy target directories
+        run: |
+          # 确保目录已被下载
+          echo "Checking if upstream-openclash exists:"
+          ls -l upstream-openclash || echo "upstream-openclash not found"
+          echo "Checking if upstream-passwall exists:"
+          ls -l upstream-passwall/luci-app-passwall || echo "upstream-passwall not found"
+          
+          # 删除旧目录
+          rm -rf luci-app-openclash luci-app-passwall
+          
+          # 同步目录
+          cp -r upstream-openclash/luci-app-openclash ./luci-app-openclash
+          cp -r upstream-passwall/luci-app-passwall ./luci-app-passwall
+
+      - name: Commit and Push changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git add luci-app-openclash luci-app-passwall
+          if git commit -m "Sync luci-app-openclash and luci-app-passwall from upstream" ; then
+            git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }} HEAD:master
+          else
+            echo "No changes to commit"
+          fi
