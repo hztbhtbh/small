@@ -33,8 +33,6 @@ jobs:
           rm -rf upstream-passwall
           git clone --depth=1 --filter=blob:none --sparse https://github.com/xiaorouji/openwrt-passwall.git upstream-passwall
           cd upstream-passwall
-          git sparse-checkout init --cone
-          # 显式指定要下载的目录
           git sparse-checkout set luci-app-passwall  # 只同步 luci-app-passwall
 
       - name: Copy target directories
