@@ -2,8 +2,8 @@ name: Sync luci-app-openclash and luci-app-passwall
 
 on:
   schedule:
-    - cron: "0 0 * * *"   # 每天 0 点运行
-  workflow_dispatch:       # 允许手动触发
+    #- cron: "0 0 * * *"   # 每天 0 点运行
+  #workflow_dispatch:       # 允许手动触发
 
 jobs:
   sync:
