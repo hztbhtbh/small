@@ -4,28 +4,17 @@ local appname = "passwall"
 
 m = Map(appname)
 m.redirect = api.url("node_subscribe")
+api.set_apply_on_parse(m)
 
 if not arg[1] or not m:get(arg[1]) then
 	luci.http.redirect(m.redirect)
 end
 
-function m.commit_handler(self)
+function m.on_before_save(self)
 	self:del(arg[1], "md5")
 end
 
-if api.is_js_luci() then
-	m.apply_on_parse = false
-	m.on_after_apply = function(self)
-		uci:delete(appname, arg[1], "md5")
-		uci:commit(appname)
-		api.showMsg_Redirect(self.redirect, 3000)
-	end
-end
-
-m.render = function(self, ...)
-	Map.render(self, ...)
-	api.optimize_cbi_ui()
-end
+m:append(Template(appname .. "/cbi/nodes_listvalue_com"))
 
 local has_ss = api.is_finded("ss-redir")
 local has_ss_rust = api.is_finded("sslocal")
@@ -38,6 +27,7 @@ local trojan_type = {}
 local vmess_type = {}
 local vless_type = {}
 local hysteria2_type = {}
+local xray_version = api.get_app_version("xray")
 if has_ss then
 	local s = "shadowsocks-libev"
 	table.insert(ss_type, s)
@@ -64,6 +54,9 @@ if has_xray then
 	table.insert(ss_type, s)
 	table.insert(vmess_type, s)
 	table.insert(vless_type, s)
+	if api.compare_versions(xray_version, ">=", "26.1.13") then
+		table.insert(hysteria2_type, s)
+	end
 end
 if has_hysteria2 then
 	local s = "hysteria2"
@@ -77,7 +70,8 @@ for k, e in ipairs(api.get_valid_nodes()) do
 			remark = e["remark"],
 			type = e["type"],
 			add_mode = e["add_mode"],
-			chain_proxy = e["chain_proxy"]
+			chain_proxy = e["chain_proxy"],
+			group = e["group"]
 		}
 	end
 end
@@ -269,18 +263,24 @@ descrStr = descrStr .. "The chained node must be the same type as your subscript
 descrStr = descrStr .. "You can only use manual or imported nodes as chained nodes."
 descrStr = translate(descrStr) .. "<br>" .. translate("Only support a layer of proxy.")
 
-o = s:option(ListValue, "preproxy_node", translate("Preproxy Node"))
-o:depends({ ["chain_proxy"] = "1" })
-o.description = descrStr
+o1 = s:option(ListValue, "preproxy_node", translate("Preproxy Node"))
+o1:depends({ ["chain_proxy"] = "1" })
+o1.description = descrStr
+o1.template = appname .. "/cbi/nodes_listvalue"
+o1.group = {}
 
-o = s:option(ListValue, "to_node", translate("Landing Node"))
-o:depends({ ["chain_proxy"] = "2" })
-o.description = descrStr
+o2 = s:option(ListValue, "to_node", translate("Landing Node"))
+o2:depends({ ["chain_proxy"] = "2" })
+o2.description = descrStr
+o2.template = appname .. "/cbi/nodes_listvalue"
+o2.group = {}
 
 for k, v in pairs(nodes_table) do
 	if (v.type == "Xray" or v.type == "sing-box") and (not v.chain_proxy or v.chain_proxy == "") and v.add_mode ~= "2" then
-		s.fields["preproxy_node"]:value(v.id, v.remark)
-		s.fields["to_node"]:value(v.id, v.remark)
+		o1:value(v.id, v.remark)
+		o1.group[#o1.group+1] = (v.group and v.group ~= "") and v.group or translate("default")
+		o2:value(v.id, v.remark)
+		o2.group[#o2.group+1] = (v.group and v.group ~= "") and v.group or translate("default")
 	end
 end
 
