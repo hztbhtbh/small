@@ -20,8 +20,8 @@ jobs:
       # 2. 配置 Git
       - name: Configure Git
         run: |
-          git config --global user.name "hatbhtbh"
-          git config --global user.email "hatbhtbh@gmail.com"
+          git config --global user.name "hztbhtbh"
+          git config --global user.email "hztbhtbh@hotmail.com"
 
       # 3. 检出 OpenClash 上游仓库
       - name: Checkout OpenClash upstream
