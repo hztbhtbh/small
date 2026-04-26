@@ -60,5 +60,5 @@ jobs:
             echo "No changes detected, skip commit"
             exit 0
           fi
-          git commit -m "Sync luci-app-openclash (v0.47.075) and luci-app-passwall from upstream"
+          git commit -m "Sync luci-app-openclash and luci-app-passwall from upstream"
           git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }} HEAD:${{ github.ref_name }}
