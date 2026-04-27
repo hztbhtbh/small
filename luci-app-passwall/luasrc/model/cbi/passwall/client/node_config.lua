@@ -1,5 +1,5 @@
-api = require "luci.passwall.api"
-appname = "passwall"
+local api = require "luci.passwall.api"
+local appname = "passwall"
 
 m = Map(appname, translate("Node Config"))
 m.redirect = api.url("node_list")
@@ -9,9 +9,6 @@ if not arg[1] or not m:get(arg[1]) then
 	luci.http.redirect(m.redirect)
 end
 
-fs = require "nixio.fs"
-formvalue_key = "cbid." .. appname .. "." .. arg[1] .. "."
-
 local header = Template(appname .. "/node_config/header")
 header.api = api
 header.section = arg[1]
@@ -19,15 +16,6 @@ m:append(header)
 
 m:append(Template(appname .. "/cbi/nodes_multivalue_com"))
 m:append(Template(appname .. "/cbi/nodes_listvalue_com"))
-
-groups = {}
-m.uci:foreach(appname, "nodes", function(s)
-	if s[".name"] ~= arg[1] then
-		if s.group and s.group ~= "" then
-			groups[s.group] = true
-		end
-	end
-end)
 
 s = m:section(NamedSection, arg[1], "nodes", "")
 s.addremove = false
@@ -45,6 +33,14 @@ o.rmempty = false
 o = s:option(Value, "group", translate("Group Name"))
 o.default = ""
 o:value("", translate("default"))
+local groups = {}
+m.uci:foreach(appname, "nodes", function(s)
+	if s[".name"] ~= arg[1] then
+		if s.group and s.group ~= "" then
+			groups[s.group] = true
+		end
+	end
+end)
 for k, v in pairs(groups) do
 	o:value(k)
 end
@@ -64,17 +60,11 @@ o.write = function(self, section, value)
 	m:set(section, self.option, value)
 end
 
+local fs = api.fs
 local types_dir = "/usr/lib/lua/luci/model/cbi/passwall/client/type/"
 s.val = {}
 s.val["type"] = m.uci:get(appname, arg[1], "type")
 s.val["protocol"] = m.uci:get(appname, arg[1], "protocol")
-
-if luci.http.formvalue("cbi.submit") == "1" then
-	local formvalue_type = luci.http.formvalue(formvalue_key .. "type")
-	if formvalue_type then
-		s.val["type"] = formvalue_type
-	end
-end
 
 o = s:option(ListValue, "type", translate("Type"))
 

@@ -1,10 +1,12 @@
 local m, s = ...
 
+local api = require "luci.passwall.api"
+
 if not api.is_finded("ssr-local") and not api.is_finded("ssr-redir")then
 	return
 end
 
-type_name = "SSR"
+local type_name = "SSR"
 
 -- [[ ShadowsocksR Libev ]]
 
@@ -39,6 +41,10 @@ local ssr_obfs_list = {
 	"tls1.0_session_auth", "tls1.2_ticket_auth"
 }
 
+o = s:option(ListValue, _n("del_protocol")) --始终隐藏，用于删除 protocol
+o:depends({ [_n("__hide")] = "1" })
+o.rewrite_option = "protocol"
+
 o = s:option(Value, _n("address"), translate("Address (Support Domain Name)"))
 
 o = s:option(Value, _n("port"), translate("Port"))
@@ -64,7 +70,8 @@ o = s:option(Value, _n("timeout"), translate("Connection Timeout"))
 o.datatype = "uinteger"
 o.default = 300
 
-o = s:option(Flag, _n("tcp_fast_open"), "TCP " .. translate("Fast Open"), translate("Need node support required"))
-o.default = 0
+o = s:option(ListValue, _n("tcp_fast_open"), "TCP " .. translate("Fast Open"), translate("Need node support required"))
+o:value("false")
+o:value("true")
 
 api.luci_types(arg[1], m, s, type_name, option_prefix)

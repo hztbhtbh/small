@@ -40,7 +40,7 @@ function index()
 	entry({"admin", "services", appname, "node_list"}, cbi(appname .. "/client/node_list"), _("Node List"), 2).dependent = true
 	entry({"admin", "services", appname, "node_subscribe"}, cbi(appname .. "/client/node_subscribe"), _("Node Subscribe"), 3).dependent = true
 	entry({"admin", "services", appname, "other"}, cbi(appname .. "/client/other", {autoapply = true}), _("Other Settings"), 92).leaf = true
-	if api.is_finded("haproxy") then
+	if fs.access("/usr/sbin/haproxy") then
 		entry({"admin", "services", appname, "haproxy"}, cbi(appname .. "/client/haproxy"), _("Load Balancing"), 93).leaf = true
 	end
 	entry({"admin", "services", appname, "app_update"}, cbi(appname .. "/client/app_update"), _("App Update"), 95).leaf = true
@@ -49,6 +49,7 @@ function index()
 	entry({"admin", "services", appname, "node_subscribe_config"}, cbi(appname .. "/client/node_subscribe_config")).leaf = true
 	entry({"admin", "services", appname, "node_config"}, cbi(appname .. "/client/node_config")).leaf = true
 	entry({"admin", "services", appname, "shunt_rules"}, cbi(appname .. "/client/shunt_rules")).leaf = true
+	entry({"admin", "services", appname, "shunt_config"}, cbi(appname .. "/client/shunt_config")).leaf = true
 	entry({"admin", "services", appname, "socks_config"}, cbi(appname .. "/client/socks_config")).leaf = true
 	entry({"admin", "services", appname, "acl"}, cbi(appname .. "/client/acl"), _("Access control"), 98).leaf = true
 	entry({"admin", "services", appname, "acl_config"}, cbi(appname .. "/client/acl_config")).leaf = true
@@ -83,6 +84,7 @@ function index()
 	entry({"admin", "services", appname, "update_node"}, call("update_node")).leaf = true
 	entry({"admin", "services", appname, "set_node"}, call("set_node")).leaf = true
 	entry({"admin", "services", appname, "copy_node"}, call("copy_node")).leaf = true
+	entry({"admin", "services", appname, "edit_node"}, call("edit_node")).leaf = true
 	entry({"admin", "services", appname, "clear_all_nodes"}, call("clear_all_nodes")).leaf = true
 	entry({"admin", "services", appname, "delete_select_nodes"}, call("delete_select_nodes")).leaf = true
 	entry({"admin", "services", appname, "reassign_group"}, call("reassign_group")).leaf = true
@@ -115,8 +117,6 @@ function index()
 
 	--[[geoview]]
 	entry({"admin", "services", appname, "geo_view"}, call("geo_view")).leaf = true
-
-	entry({"admin", "services", appname, "fetch_certsha256"}, call("fetch_certsha256")).leaf = true
 end
 
 local function http_write_json(content)
@@ -308,11 +308,7 @@ function index_status()
 		e.dns_mode_status = luci.sys.call("netstat -apn | grep ':15353 ' >/dev/null") == 0
 	end
 
-	e.haproxy_status = "-1"
-	if api.is_finded("haproxy") then
-		e.haproxy_status = (luci.sys.call(string.format("/bin/busybox top -bn1 | grep -v grep | grep '%s/bin/' | grep haproxy >/dev/null", appname)) == 0) and "0" or "1"
-	end
-
+	e.haproxy_status = luci.sys.call(string.format("/bin/busybox top -bn1 | grep -v grep | grep '%s/bin/' | grep haproxy >/dev/null", appname)) == 0
 	e["tcp_node_status"] = luci.sys.call("/bin/busybox top -bn1 | grep -v 'grep' | grep '/tmp/etc/passwall/bin/' | grep 'default' | grep 'TCP' >/dev/null") == 0
 
 	if (uci:get(appname, "@global[0]", "udp_node") or "nil") == "tcp" then
@@ -421,6 +417,7 @@ function urltest_node()
 end
 
 function add_node()
+	local protocol = http.formvalue("protocol") or ""
 	local redirect = http.formvalue("redirect")
 
 	local uuid = api.gen_short_uuid()
@@ -431,11 +428,19 @@ function add_node()
 		uci:set(appname, uuid, "group", group)
 	end
 
-	uci:set(appname, uuid, "type", "Socks")
+	if protocol == "shunt" then
+		uci:set(appname, uuid, "protocol", "_shunt")
+	else
+		uci:set(appname, uuid, "type", "Socks")
+	end
 
 	if redirect == "1" then
 		api.uci_save(uci, appname)
-		http.redirect(api.url("node_config", uuid))
+		if protocol == "shunt" then
+			http.redirect(api.url("shunt_config", uuid))
+		else
+			http.redirect(api.url("node_config", uuid))
+		end
 	else
 		api.uci_save(uci, appname, true, true)
 		http_write_json({result = uuid})
@@ -486,14 +491,30 @@ function copy_node()
 	local uuid = api.gen_short_uuid()
 	uci:section(appname, "nodes", uuid)
 	for k, v in pairs(uci:get_all(appname, section)) do
-		if not k:match("^%.") and k ~= "group" then
-			if k == "remarks" then v = (v or "") .. "(1)" end
-			uci:set(appname, uuid, k, v)
+		local filter = k:find("%.")
+		if filter and filter == 1 then
+		else
+			xpcall(function()
+				uci:set(appname, uuid, k, v)
+			end,
+			function(e)
+			end)
 		end
 	end
+	uci:delete(appname, uuid, "group")
 	uci:set(appname, uuid, "add_mode", 1)
 	api.uci_save(uci, appname)
 	http.redirect(api.url("node_config", uuid))
+end
+
+function edit_node()
+	local section = http.formvalue("section")
+	local protocol = uci:get(appname, section, "protocol")
+	if protocol == "_shunt" then
+		http.redirect(api.url("shunt_config", section))
+	else
+		http.redirect(api.url("node_config", section))
+	end
 end
 
 function clear_all_nodes()
@@ -698,11 +719,7 @@ function save_node_list_opt()
 end
 
 function update_rules()
-	local update = http.formvalue("update") or ""
-	if update == "" then
-		http_write_json_error({ message = "missing update target" })
-		return
-	end
+	local update = http.formvalue("update")
 	luci.sys.call("lua /usr/share/passwall/rule_update.lua log '" .. update .. "' > /dev/null 2>&1 &")
 	http_write_json()
 end
@@ -888,7 +905,7 @@ function geo_view()
 		return
 	end
 	local function get_rules(str, type)
-		local rules_id = {}
+		local remarks = {}
 		uci:foreach(appname, "shunt_rules", function(s)
 			local list
 			if type == "geoip" then list = s.ip_list else list = s.domain_list end
@@ -897,28 +914,27 @@ function geo_view()
 					local prefix, main = line:match("^(.-):(.*)")
 					if not main then main = line end
 					if type == "geoip" and (api.datatypes.ipaddr(str) or api.datatypes.ip6addr(str)) then
-						if main:find(str, 1, true) then rules_id[#rules_id + 1] = s[".name"] end
+						if main:find(str, 1, true) and s.remarks then remarks[#remarks + 1] = s.remarks end
 					else
-						if main == str then rules_id[#rules_id + 1] = s[".name"] end
+						if main == str and s.remarks then remarks[#remarks + 1] = s.remarks end
 					end
 				end
 			end
 		end)
-		return rules_id
+		return remarks
 	end
 	local geo_dir = (uci:get(appname, "@global_rules[0]", "v2ray_location_asset") or "/usr/share/v2ray/"):match("^(.*)/")
 	local geosite_path = geo_dir .. "/geosite.dat"
 	local geoip_path = geo_dir .. "/geoip.dat"
 	local geo_type, file_path, cmd
 	local geo_string = ""
-	local bin = api.finded_com("geoview")
 	if action == "lookup" then
 		if api.datatypes.ipaddr(value) or api.datatypes.ip6addr(value) then
 			geo_type, file_path = "geoip", geoip_path
 		else
 			geo_type, file_path = "geosite", geosite_path
 		end
-		cmd = string.format("%q -type %q -action lookup -input %q -value %q -lowmem=true", bin, geo_type, file_path, value)
+		cmd = string.format("geoview -type %s -action lookup -input '%s' -value '%s' -lowmem=true", geo_type, file_path, value)
 		geo_string = luci.sys.exec(cmd):lower()
 		if geo_string ~= "" then
 			local lines, rules, seen = {}, {}, {}
@@ -946,7 +962,7 @@ function geo_view()
 		if prefix and list and list ~= "" then
 			geo_type = prefix:sub(1, -2)
 			file_path = (geo_type == "geoip") and geoip_path or geosite_path
-			cmd = string.format("%q -type %q -action extract -input %q -list %q -lowmem=true", bin, geo_type, file_path, list)
+			cmd = string.format("geoview -type %s -action extract -input '%s' -list '%s' -lowmem=true", geo_type, file_path, list)
 			geo_string = luci.sys.exec(cmd)
 		end
 	end
@@ -1031,16 +1047,4 @@ function flush_set()
 	if redirect == "1" then
 		http.redirect(api.url("log"))
 	end
-end
-
-function fetch_certsha256()
-	local id = http.formvalue("id") or ""
-	local address = (id ~= "") and uci:get(appname, id, "address") or ""
-	local port = (id ~= "") and uci:get(appname, id, "port") or 0
-	if id == "" or address == "" or not api.datatypes.hostname(address) or port == 0 then
-		http_write_json_error()
-		return
-	end
-	local data = api.fetch_cert_sha256(address, port, 5)
-	http_write_json(data ~= "" and { code = 1, data = data } or { code = 0 })
 end

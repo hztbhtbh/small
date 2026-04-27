@@ -1,9 +1,9 @@
-api = require "luci.passwall.api"
-appname = "passwall"
-datatypes = api.datatypes
+local api = require "luci.passwall.api"
+local appname = "passwall"
+local datatypes = api.datatypes
 local fs = api.fs
-has_singbox = api.finded_com("sing-box")
-has_xray = api.finded_com("xray")
+local has_singbox = api.finded_com("sing-box")
+local has_xray = api.finded_com("xray")
 local has_gfwlist = fs.access("/usr/share/passwall/rules/gfwlist")
 local has_chnlist = fs.access("/usr/share/passwall/rules/chnlist")
 local has_chnroute = fs.access("/usr/share/passwall/rules/chnroute")
@@ -95,8 +95,6 @@ end
 
 m:append(Template(appname .. "/global/status"))
 
-global_cfgid = m:get("@global[0]")[".name"]
-
 s = m:section(TypedSection, "global")
 s.anonymous = true
 s.addremove = false
@@ -122,7 +120,7 @@ o.group = {"",""}
 o:depends("_node_sel_other", "1")
 o.remove = function(self, section)
 	local v = s.fields["shunt_udp_node"]:formvalue(section)
-	if not v then
+	if not f then
 		return m:del(section, self.option)
 	end
 end
@@ -142,41 +140,13 @@ o.write = function(self, section, value)
 	return m:set(section, "udp_node", value)
 end
 
--- Shunt Start
-if (has_singbox or has_xray) and #nodes_table > 0 then
-	if #normal_list > 0 or #iface_list > 0 then
-		current_node_id = m.uci:get(appname, global_cfgid, "tcp_node")
-		current_node = current_node_id and m.uci:get_all(appname, current_node_id) or {}
-		if current_node.protocol == "_shunt" then
-			local shunt_lua = loadfile("/usr/lib/lua/luci/model/cbi/passwall/client/include/shunt_options.lua")
-			setfenv(shunt_lua, getfenv(1))(m, s, {
-				node_id = current_node_id,
-				node = current_node,
-				socks_list = socks_list,
-				urltest_list = urltest_list,
-				balancing_list = balancing_list,
-				iface_list = iface_list,
-				normal_list = normal_list,
-				verify_option = s.fields["tcp_node"],
-				tab = "Shunt",
-				tab_desc = translate("Shunt Rule")
-			})
-		end
-	else
-		local tips = s:taboption("Main", DummyValue, "tips", "　")
-		tips.rawhtml = true
-		tips.cfgvalue = function(t, n)
-			return string.format('<a style="color: red">%s</a>', translate("There are no available nodes, please add or subscribe nodes first."))
-		end
-		tips:depends({ tcp_node = "", ["!reverse"] = true })
-		for k, v in pairs(shunt_list) do
-			tips:depends("tcp_node", v.id)
-		end
-		for k, v in pairs(balancing_list) do
-			tips:depends("tcp_node", v.id)
-		end
-	end
+o = s:taboption("Main", DummyValue, "shunt_tips", "　")
+o.rawhtml = true
+o.cfgvalue = function(t, n)
+	return string.format('<font color=#FF8C00>%s</font>',
+	translate("To modify the shunt policy, click the Edit button."))
 end
+o:depends("_node_sel_shunt", "1")
 
 o = s:taboption("Main", Value, "tcp_node_socks_port", translate("TCP Node") .. " Socks " .. translate("Listen Port"))
 o.default = 1070
@@ -212,25 +182,10 @@ o:value("dnsmasq", "Dnsmasq")
 o:value("chinadns-ng", translate("ChinaDNS-NG (recommended)"))
 if api.is_finded("smartdns") then
 	o:value("smartdns", "SmartDNS")
-	o.write = function(self, section, value)
-		if value ~= "smartdns" then
-			m:del(section, "group_domestic")
-		end
-		return ListValue.write(self, section, value)
-	end
-
 	o = s:taboption("DNS", Value, "group_domestic", translate("Domestic group name"))
 	o.placeholder = "local"
-	o.rmempty = false
 	o:depends("dns_shunt", "smartdns")
 	o.description = translate("You only need to configure domestic DNS packets in SmartDNS, and fill in the domestic DNS group name here.")
-	o.validate = function(self, value, section)
-		value = api.trim(value)
-		if value == "" then
-			return nil, translatef("%s cannot be empty.", "SmartDNS " .. translate("Domestic group name"))
-		end
-		return value
-	end
 end
 
 o = s:taboption("DNS", ListValue, "direct_dns_mode", translate("Direct DNS") .. " " .. translate("Request protocol"))
@@ -377,8 +332,8 @@ end
 
 o = s:taboption("DNS", ListValue, "xray_dns_mode", translate("Remote DNS") .. " " .. translate("Request protocol"))
 o.default = "tcp"
-o:value("tcp", "TCP")
 o:value("udp", "UDP")
+o:value("tcp", "TCP")
 o:value("tcp+doh", "TCP + DoH (" .. translate("A/AAAA type") .. ")")
 o:depends("dns_mode", "xray")
 o:depends("smartdns_dns_mode", "xray")
@@ -386,26 +341,23 @@ o.cfgvalue = function(self, section)
 	return m:get(section, "v2ray_dns_mode")
 end
 o.write = function(self, section, value)
-	local f = s.fields["smartdns_dns_mode"]
-	if s.fields["dns_mode"]:formvalue(section) == "xray" or (f and f:formvalue(section) == "xray") then
+	if s.fields["dns_mode"]:formvalue(section) == "xray" or s.fields["smartdns_dns_mode"]:formvalue(section) == "xray" then
 		return m:set(section, "v2ray_dns_mode", value)
 	end
 end
 
 o = s:taboption("DNS", ListValue, "singbox_dns_mode", translate("Remote DNS") .. " " .. translate("Request protocol"))
 o.default = "tcp"
-o:value("tcp", "TCP")
 o:value("udp", "UDP")
+o:value("tcp", "TCP")
 o:value("doh", "DoH")
-o:value("http3", "HTTP3(DoH3)")
 o:depends("dns_mode", "sing-box")
 o:depends("smartdns_dns_mode", "sing-box")
 o.cfgvalue = function(self, section)
 	return m:get(section, "v2ray_dns_mode")
 end
 o.write = function(self, section, value)
-	local f = s.fields["smartdns_dns_mode"]
-	if s.fields["dns_mode"]:formvalue(section) == "sing-box" or (f and f:formvalue(section) == "sing-box") then
+	if s.fields["dns_mode"]:formvalue(section) == "sing-box" or s.fields["smartdns_dns_mode"]:formvalue(section) == "sing-box" then
 		return m:set(section, "v2ray_dns_mode", value)
 	end
 end
@@ -458,7 +410,6 @@ o:value("https://doh.libredns.gr/ads,116.202.176.26", "116.202.176.26 (LibreDNS-
 o.validate = doh_validate
 o:depends({xray_dns_mode = "tcp+doh"})
 o:depends({singbox_dns_mode = "doh"})
-o:depends({singbox_dns_mode = "http3"})
 
 o = s:taboption("DNS", Value, "remote_dns_client_ip", translate("EDNS Client Subnet"))
 o.description = translate("Notify the DNS server when the DNS query is notified, the location of the client (cannot be a private IP address).") .. "<br />" ..
@@ -486,7 +437,7 @@ o.validate = function(self, value, t)
 		end
 		local _tcp_node = s.fields["tcp_node"]:formvalue(t)
 		if _dns_mode and _tcp_node then
-			if (m:get(_tcp_node, "type") or ""):lower() ~= _dns_mode then
+			if m:get(_tcp_node, "type"):lower() ~= _dns_mode then
 				return nil, translatef("TCP node must be '%s' type to use FakeDNS.", _dns_mode)
 			end
 		end
@@ -523,7 +474,8 @@ if api.is_finded("smartdns") then
 end
 
 o = s:taboption("DNS", Flag, "force_https_soa", translate("Force HTTPS SOA"), translate("Force queries with qtype 65 to respond with an SOA record."))
-o.default = "0"
+o.default = "1"
+o.rmempty = false
 o:depends({dns_shunt = "chinadns-ng"})
 if api.is_finded("smartdns") then
 	o:depends({dns_shunt = "smartdns"})
@@ -533,12 +485,12 @@ o = s:taboption("DNS", Flag, "dns_redirect", translate("DNS Redirect"), translat
 o.default = "1"
 o.rmempty = false
 
-local prefer_nft = m:get("@global_forwarding[0]", "prefer_nft") == "1"
-local set_title = api.i18n.translate(prefer_nft and "Clear NFTSET on Reboot" or "Clear IPSET on Reboot")
+local use_nft = m:get("@global_forwarding[0]", "use_nft") == "1"
+local set_title = api.i18n.translate(use_nft and "Clear NFTSET on Reboot" or "Clear IPSET on Reboot")
 o = s:taboption("DNS", Flag, "flush_set_on_reboot", set_title, translate("Clear IPSET/NFTSET on service reboot. This may increase reboot time."))
 o.default = "0"
 
-set_title = api.i18n.translate(prefer_nft and "Clear NFTSET" or "Clear IPSET")
+set_title = api.i18n.translate(use_nft and "Clear NFTSET" or "Clear IPSET")
 o = s:taboption("DNS", DummyValue, "clear_ipset", set_title, translate("Try this feature if the rule modification does not take effect."))
 o.rawhtml = true
 function o.cfgvalue(self, section)
@@ -795,7 +747,7 @@ for k, v in pairs(socks_list) do
 	udp.group[#udp.group+1] = (v.group and v.group ~= "") and v.group or translate("default")
 end
 for k, v in pairs(nodes_table) do
-	if #normal_list == 0 and #iface_list == 0 then
+	if #normal_list == 0 then
 		break
 	end
 	if v.protocol == "_shunt" then
@@ -831,8 +783,6 @@ end
 
 local footer = Template(appname .. "/global/footer")
 footer.api = api
-footer.global_cfgid = global_cfgid
-footer.shunt_list = api.jsonc.stringify(shunt_list)
 m:append(footer)
 
 return m

@@ -1,10 +1,12 @@
 local m, s = ...
 
+local api = require "luci.passwall.api"
+
 if not api.is_finded("naive") then
 	return
 end
 
-type_name = "Naiveproxy"
+local type_name = "Naiveproxy"
 
 -- [[ Naive ]]
 

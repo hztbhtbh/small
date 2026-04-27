@@ -54,12 +54,13 @@ end
 o.validate = function(self, value)
 	local hosts= {}
 	value = clean_text(value)
-	string.gsub(value, '[^' .. "\r\n" .. ']+', function(w) table.insert(hosts, api.trim(w)) end)
+	string.gsub(value, '[^' .. "\r\n" .. ']+', function(w) table.insert(hosts, w) end)
 	for index, host in ipairs(hosts) do
-		if host ~= "" and not host:find("^#") and not host:find("^geosite:") then
-			if not datatypes.hostname(host) then
-				return nil, host .. " " .. translate("Not valid domain name, please re-enter!")
-			end
+		if host:sub(1, 1) == "#" or host:sub(1, 8) == "geosite:" then
+			return value
+		end
+		if not datatypes.hostname(host) then
+			return nil, host .. " " .. translate("Not valid domain name, please re-enter!")
 		end
 	end
 	return value
@@ -82,12 +83,13 @@ end
 o.validate = function(self, value)
 	local ipmasks= {}
 	value = clean_text(value)
-	string.gsub(value, '[^' .. "\r\n" .. ']+', function(w) table.insert(ipmasks, api.trim(w)) end)
+	string.gsub(value, '[^' .. "\r\n" .. ']+', function(w) table.insert(ipmasks, w) end)
 	for index, ipmask in ipairs(ipmasks) do
-		if ipmask ~= "" and not ipmask:find("^#") and not ipmask:find("^geoip:") then
-			if not ( datatypes.ipmask4(ipmask) or datatypes.ipmask6(ipmask) ) then
-				return nil, ipmask .. " " .. translate("Not valid IP format, please re-enter!")
-			end
+		if ipmask:sub(1, 1) == "#" or ipmask:sub(1, 6) == "geoip:" then
+			return value
+		end
+		if not ( datatypes.ipmask4(ipmask) or datatypes.ipmask6(ipmask) ) then
+			return nil, ipmask .. " " .. translate("Not valid IP format, please re-enter!")
 		end
 	end
 	return value
@@ -112,12 +114,13 @@ end
 o.validate = function(self, value)
 	local hosts= {}
 	value = clean_text(value)
-	string.gsub(value, '[^' .. "\r\n" .. ']+', function(w) table.insert(hosts, api.trim(w)) end)
+	string.gsub(value, '[^' .. "\r\n" .. ']+', function(w) table.insert(hosts, w) end)
 	for index, host in ipairs(hosts) do
-		if host ~= "" and not host:find("^#") and not host:find("^geosite:") then
-			if not datatypes.hostname(host) then
-				return nil, host .. " " .. translate("Not valid domain name, please re-enter!")
-			end
+		if host:sub(1, 1) == "#" or host:sub(1, 8) == "geosite:" then
+			return value
+		end
+		if not datatypes.hostname(host) then
+			return nil, host .. " " .. translate("Not valid domain name, please re-enter!")
 		end
 	end
 	return value
@@ -140,12 +143,13 @@ end
 o.validate = function(self, value)
 	local ipmasks= {}
 	value = clean_text(value)
-	string.gsub(value, '[^' .. "\r\n" .. ']+', function(w) table.insert(ipmasks, api.trim(w)) end)
+	string.gsub(value, '[^' .. "\r\n" .. ']+', function(w) table.insert(ipmasks, w) end)
 	for index, ipmask in ipairs(ipmasks) do
-		if ipmask ~= "" and not ipmask:find("^#") and not ipmask:find("^geoip:") then
-			if not ( datatypes.ipmask4(ipmask) or datatypes.ipmask6(ipmask) ) then
-				return nil, ipmask .. " " .. translate("Not valid IP format, please re-enter!")
-			end
+		if ipmask:sub(1, 1) == "#" or ipmask:sub(1, 6) == "geoip:" then
+			return value
+		end
+		if not ( datatypes.ipmask4(ipmask) or datatypes.ipmask6(ipmask) ) then
+			return nil, ipmask .. " " .. translate("Not valid IP format, please re-enter!")
 		end
 	end
 	return value
@@ -168,12 +172,13 @@ end
 o.validate = function(self, value)
 	local hosts= {}
 	value = clean_text(value)
-	string.gsub(value, '[^' .. "\r\n" .. ']+', function(w) table.insert(hosts, api.trim(w)) end)
+	string.gsub(value, '[^' .. "\r\n" .. ']+', function(w) table.insert(hosts, w) end)
 	for index, host in ipairs(hosts) do
-		if host ~= "" and not host:find("^#") and not host:find("^geosite:") then
-			if not datatypes.hostname(host) then
-				return nil, host .. " " .. translate("Not valid domain name, please re-enter!")
-			end
+		if host:sub(1, 1) == "#" or host:sub(1, 8) == "geosite:" then
+			return value
+		end
+		if not datatypes.hostname(host) then
+			return nil, host .. " " .. translate("Not valid domain name, please re-enter!")
 		end
 	end
 	return value
@@ -196,12 +201,13 @@ end
 o.validate = function(self, value)
 	local ipmasks= {}
 	value = clean_text(value)
-	string.gsub(value, '[^' .. "\r\n" .. ']+', function(w) table.insert(ipmasks, api.trim(w)) end)
+	string.gsub(value, '[^' .. "\r\n" .. ']+', function(w) table.insert(ipmasks, w) end)
 	for index, ipmask in ipairs(ipmasks) do
-		if ipmask ~= "" and not ipmask:find("^#") and not ipmask:find("^geoip:") then
-			if not ( datatypes.ipmask4(ipmask) or datatypes.ipmask6(ipmask) ) then
-				return nil, ipmask .. " " .. translate("Not valid IP format, please re-enter!")
-			end
+		if ipmask:sub(1, 1) == "#" or ipmask:sub(1, 6) == "geoip:" then
+			return value
+		end
+		if not ( datatypes.ipmask4(ipmask) or datatypes.ipmask6(ipmask) ) then
+			return nil, ipmask .. " " .. translate("Not valid IP format, please re-enter!")
 		end
 	end
 	return value
@@ -224,12 +230,13 @@ end
 o.validate = function(self, value)
 	local ipmasks= {}
 	value = clean_text(value)
-	string.gsub(value, '[^' .. "\r\n" .. ']+', function(w) table.insert(ipmasks, api.trim(w)) end)
+	string.gsub(value, '[^' .. "\r\n" .. ']+', function(w) table.insert(ipmasks, w) end)
 	for index, ipmask in ipairs(ipmasks) do
-		if ipmask ~= "" and not ipmask:find("^#") then
-			if not datatypes.ipmask4(ipmask) then
-				return nil, ipmask .. " " .. translate("Not valid IPv4 format, please re-enter!")
-			end
+		if ipmask:sub(1, 1) == "#" then
+			return value
+		end
+		if not datatypes.ipmask4(ipmask) then
+			return nil, ipmask .. " " .. translate("Not valid IPv4 format, please re-enter!")
 		end
 	end
 	return value
@@ -252,12 +259,13 @@ end
 o.validate = function(self, value)
 	local ipmasks= {}
 	value = clean_text(value)
-	string.gsub(value, '[^' .. "\r\n" .. ']+', function(w) table.insert(ipmasks, api.trim(w)) end)
+	string.gsub(value, '[^' .. "\r\n" .. ']+', function(w) table.insert(ipmasks, w) end)
 	for index, ipmask in ipairs(ipmasks) do
-		if ipmask ~= "" and not ipmask:find("^#") then
-			if not datatypes.ipmask6(ipmask) then
-				return nil, ipmask .. " " .. translate("Not valid IPv6 format, please re-enter!")
-			end
+		if ipmask:sub(1, 1) == "#" then
+			return value
+		end
+		if not datatypes.ipmask6(ipmask) then
+			return nil, ipmask .. " " .. translate("Not valid IPv6 format, please re-enter!")
 		end
 	end
 	return value
