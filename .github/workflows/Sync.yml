@@ -23,7 +23,7 @@ jobs:
           git config --global user.name "hztbhtbh"
           git config --global user.email "hztbhtbh@hotmail.com"
 
-      # 3. 检出 OpenClash 上游仓库（改为指定版本）
+      # 3. 检测 OpenClash 上游仓库（改为指定版本）
       - name: Checkout OpenClash upstream
         uses: actions/checkout@v4
         with:
@@ -33,7 +33,7 @@ jobs:
           fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 4. 检出 Passwall 上游仓库（改为指定版本）
+      # 4. 检测 Passwall 上游仓库（改为指定版本）
       - name: Checkout Passwall upstream
         uses: actions/checkout@v4
         with:
