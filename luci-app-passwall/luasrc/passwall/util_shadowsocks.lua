@@ -37,7 +37,7 @@ function gen_config(var)
 		return
 	end
 	local node = uci:get_all("passwall", node_id)
-	local server_host = var["server_host"] or node.address
+	local server_host = var["server_host"] or (node.address or ""):lower()
 	local server_port = var["server_port"] or node.port
 	local local_addr = var["local_addr"]
 	local local_port = var["local_port"]
@@ -75,7 +75,7 @@ function gen_config(var)
 		password = node.password,
 		method = node.method,
 		timeout = tonumber(node.timeout),
-		fast_open = (node.tcp_fast_open and node.tcp_fast_open == "true") and true or false,
+		fast_open = (node.tcp_fast_open and node.tcp_fast_open == "1") and true or false,
 		reuse_port = true,
 		tcp_tproxy = var["tcp_tproxy"] and true or nil
 	}
@@ -103,7 +103,7 @@ function gen_config(var)
 				}
 			},
 			locals = {},
-			fast_open = (node.tcp_fast_open and node.tcp_fast_open == "true") and true or false
+			fast_open = (node.tcp_fast_open and node.tcp_fast_open == "1") and true or false
 		}
 		if local_socks_address and local_socks_port then
 			table.insert(config.locals, {

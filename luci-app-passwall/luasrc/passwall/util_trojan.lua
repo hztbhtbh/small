@@ -50,7 +50,7 @@ function gen_config(var)
 	local run_type = var["run_type"]
 	local local_addr = var["local_addr"]
 	local local_port = var["local_port"]
-	local server_host = var["server_host"] or node.address
+	local server_host = var["server_host"] or (node.address or ""):lower()
 	local server_port = var["server_port"] or node.port
 	local loglevel = var["loglevel"] or 2
 	local cipher = "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES128-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA:AES128-SHA:AES256-SHA:DES-CBC3-SHA"
@@ -87,7 +87,7 @@ function gen_config(var)
 			no_delay = true,
 			keep_alive = true,
 			reuse_port = true,
-			fast_open = (node.tcp_fast_open == "true") and true or false,
+			fast_open = (node.tcp_fast_open and node.tcp_fast_open == "1") and true or false,
 			fast_open_qlen = 20
 		}
 	}
