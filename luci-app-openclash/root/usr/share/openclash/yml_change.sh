@@ -185,7 +185,7 @@ set_disable_qtype()
 yml_dns_get()
 {
    local section="$1" regex='^([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}$'
-   local enabled port type ip group dns_type dns_address interface specific_group node_resolve direct_nameserver http3 skip_cert_verify ecs_subnet ecs_override disable_qtype_param disable_qtype disable_ipv4 disable_ipv6 disable_reuse
+   local enabled port type ip group dns_type dns_address interface specific_group node_resolve http3 ecs_subnet ecs_override disable_qtype_param
 
    config_get_bool "enabled" "$section" "enabled" "1"
    [ "$enabled" = "0" ] && return
@@ -378,7 +378,6 @@ begin
    smart_collect = '${44}' == '1'
    smart_collect_size = '${45}'
    fake_ip_range6 = '${46}'
-   fake_ip_range6_enable = '${47}' == '1'
    default_dashboard = '$default_dashboard'
    yacd_type = '$yacd_type'
    dashboard_type = '$dashboard_type'
@@ -481,7 +480,7 @@ begin
          else
             Value['dns']['enhanced-mode'] = 'fake-ip'
             Value['dns']['fake-ip-range'] = fake_ip_range
-            if Value['dns']['ipv6'] and fake_ip_range6_enable
+            if Value['dns']['ipv6']
                Value['dns']['fake-ip-range6'] = fake_ip_range6
             end
          end

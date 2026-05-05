@@ -3,8 +3,6 @@ local openclash = "openclash"
 local uci = luci.model.uci.cursor()
 local fs = require "luci.openclash"
 local SYS = require "luci.sys"
-local DISP = require "luci.dispatcher"
-local HTTP = require "luci.http"
 local sid = arg[1]
 
 font_red = [[<b style=color:red>]]
@@ -15,9 +13,9 @@ bold_off = [[</strong>]]
 
 m = Map(openclash, translate("Add Custom DNS Servers"))
 m.pageaction = false
-m.redirect = DISP.build_url("admin/services/openclash/config-overwrite")
+m.redirect = luci.dispatcher.build_url("admin/services/openclash/config-overwrite")
 if m.uci:get(openclash, sid) ~= "dns_servers" then
-	HTTP.redirect(m.redirect)
+	luci.http.redirect(m.redirect)
 	return
 end
 
@@ -169,7 +167,7 @@ o.inputtitle = translate("Commit Settings")
 o.inputstyle = "apply"
 o.write = function()
 	m.uci:commit(openclash)
-	HTTP.redirect(m.redirect)
+	luci.http.redirect(m.redirect)
 end
 
 o = a:option(Button,"Back", " ")
@@ -177,7 +175,7 @@ o.inputtitle = translate("Back Settings")
 o.inputstyle = "reset"
 o.write = function()
 	m.uci:revert(openclash, sid)
-	HTTP.redirect(m.redirect)
+	luci.http.redirect(m.redirect)
 end
 
 m:append(Template("openclash/toolbar_show"))
